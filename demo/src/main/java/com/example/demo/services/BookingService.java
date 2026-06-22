@@ -54,4 +54,52 @@ public class BookingService {
         booking.setStatus(BookingStatus.CONFIRMED);
         return bookingRepository.save(booking);
     }
+    public Booking getBookingById(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+    }
+
+    // 2. READ: Fetch the entire history of bookings for a specific user
+    public List<Booking> getBookingsByUserId(Long userId) {
+        return bookingRepository.findByUserId(userId);
+    }
+
+    // 3. UPDATE: Cancel a booking and mark all associated seats back to AVAILABLE
+    @Transactional
+    public Booking cancelBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+
+        if (booking.getStatus() == BookingStatus.FAILED) {
+            throw new RuntimeException("Cannot cancel an already cancelled booking");
+        }
+
+        // Loop through booking items to release the seats back to the public pool
+        for (BookingItem item : booking.getItems()) {
+            Seat seat = item.getSeat();
+            seat.setStatus(SeatStatus.AVAILABLE);
+            seatRepository.save(seat);
+        }
+
+        booking.setStatus(BookingStatus.FAILED); // Using FAILED as our cancelled state
+        return bookingRepository.save(booking);
+    }
+
+    // 4. DELETE: Purge the booking entirely from the system database
+    @Transactional
+    public void deleteBooking(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking not found with ID: " + bookingId));
+
+        // Safety check: If it was a confirmed active booking, release seats before deleting
+        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+            for (BookingItem item : booking.getItems()) {
+                Seat seat = item.getSeat();
+                seat.setStatus(SeatStatus.AVAILABLE);
+                seatRepository.save(seat);
+            }
+        }
+
+        bookingRepository.delete(booking);
+    }
 }
