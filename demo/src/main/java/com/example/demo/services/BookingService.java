@@ -10,14 +10,16 @@ public class BookingService {
     private final SeatRepository seatRepository;
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
+    private final EventService eventService;
 
     // Constructor injection for our dependencies
     public BookingService(BookingRepository bookingRepository, SeatRepository seatRepository,
-                          UserRepository userRepository, EventRepository eventRepository) {
+                          UserRepository userRepository, EventRepository eventRepository,EventService eventService) {
         this.bookingRepository = bookingRepository;
         this.seatRepository = seatRepository;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
+        this.eventService = eventService;
     }
     @Transactional
     public Booking createBooking(Long userId, Long eventId, List<Long> seatIds){
@@ -51,6 +53,7 @@ public class BookingService {
             item.setSeat(seat);
             booking.getItems().add(item);
         }
+        eventService.clearSeatCache(eventId);
         booking.setStatus(BookingStatus.CONFIRMED);
         return bookingRepository.save(booking);
     }
@@ -80,7 +83,7 @@ public class BookingService {
             seat.setStatus(SeatStatus.AVAILABLE);
             seatRepository.save(seat);
         }
-
+        eventService.clearSeatCache(booking.getEvent().getId());
         booking.setStatus(BookingStatus.FAILED); // Using FAILED as our cancelled state
         return bookingRepository.save(booking);
     }
@@ -99,7 +102,7 @@ public class BookingService {
                 seatRepository.save(seat);
             }
         }
-
+        eventService.clearSeatCache(booking.getEvent().getId());
         bookingRepository.delete(booking);
     }
 }
