@@ -18,6 +18,8 @@ public class Event {
     private String title;
     @Column(columnDefinition="TEXT")
     private LocalDateTime eventDate;
+    @Column(columnDefinition = "TEXT")
+    private String description;
     @Column(nullable=false)
     private Integer totalSeats;
 }
